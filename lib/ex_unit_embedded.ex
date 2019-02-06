@@ -17,55 +17,69 @@ defmodule ExUnitEmbedded do
   Documentation for ExUnitEmbedded.
   """
 
-  defmacro unit_tests(opts \\ [], do: block) do
+  defmodule Macros do
+    defmacro test(message, var \\ quote(do: _), contents) do
+      contents =
+        case contents do
+          [do: block] ->
+            quote do
+              import ExUnit.Assertions
+
+              unquote(block)
+              :ok
+            end
+
+          _ ->
+            quote do
+              import ExUnit.Assertions
+
+              try(unquote(contents))
+              :ok
+            end
+        end
+
+      var = Macro.escape(var)
+      contents = Macro.escape(contents, unquote: true)
+
+      quote bind_quoted: [var: var, contents: contents, message: message] do
+        if @ex_unit_embedded_enabled do
+          name = :"embedded #{message}"
+          def unquote(name)(unquote(var)), do: unquote(contents)
+
+          @ex_unit_embedded_tests {message, name}
+        end
+      end
+    end
+  end
+
+  defmacro __using__(opts) do
     envs =
       opts
       |> Keyword.get(:envs, [:test])
       |> List.wrap()
 
-    if Mix.env() in envs do
-      quote location: :keep do
-        moduletag_check = Module.get_attribute(__MODULE__, :moduletag)
-        tag_check = Module.get_attribute(__MODULE__, :tag)
+    quote do
+      import unquote(Macros), only: [test: 2]
 
-        if moduletag_check || tag_check do
-          raise "you must set @tag and @moduletag after the call to \"use ExUnit.Case\""
-        end
+      @ex_unit_embedded_enabled Mix.env() in unquote(envs)
 
-        attributes = [
-          :ex_unit_tests,
-          :tag,
-          :describetag,
-          :moduletag,
-          :ex_unit_registered,
-          :ex_unit_used_describes
-        ]
-
-        Enum.each(attributes, &Module.register_attribute(__MODULE__, &1, accumulate: true))
-
-        @before_compile ExUnit.Case
-        @ex_unit_describe nil
-        use ExUnit.Callbacks
-
-        import ExUnit.Callbacks
-        import ExUnit.Assertions
-        import ExUnit.Case, only: [describe: 2, test: 1, test: 2, test: 3]
-        import ExUnit.DocTest
-
-        unquote(block)
-
-        def ex_unit_register(opts \\ []) do
-          async = Keyword.get(opts, :async, false)
-
-          if async do
-            ExUnit.Server.add_async_module(__MODULE__)
-          else
-            ExUnit.Server.add_sync_module(__MODULE__)
-          end
-        end
+      if @ex_unit_embedded_enabled do
+        Module.register_attribute(__MODULE__, :ex_unit_embedded_tests,
+          accumulate: true,
+          persist: true
+        )
       end
-    else
-      nil
+    end
+  end
+
+  defmacro unittest(mod) do
+    quote bind_quoted: [mod: mod] do
+      tests = Keyword.get(mod.module_info(:attributes), :ex_unit_embedded_tests, [])
+
+      for {message, function} <- tests do
+        name = ExUnit.Case.register_test(__ENV__, :embedded, message, [])
+        def unquote(name)(env), do: apply(unquote(mod), unquote(function), [env])
+      end
     end
   end
 end

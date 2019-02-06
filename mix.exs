@@ -19,8 +19,8 @@ defmodule ExUnitEmbedded.MixProject do
     ]
   end
 
-  defp paths(:test), do: ~w[examples/ lib/]
-  defp paths(_), do: ~w[lib/]
+  defp paths(_), do: ~w[examples/ lib/]
+  # defp paths(_), do: ~w[lib/]
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do

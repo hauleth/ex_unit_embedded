@@ -21,28 +21,31 @@ be found at [https://hexdocs.pm/exunit_embedded](https://hexdocs.pm/ex_unit_embe
 
 ## Usage
 
-Simply import `ExUnitEmbedded` and define your tests within `unit_tests`:
+Simply use `ExUnitEmbedded` and define your tests (no `describe` available):
 
 ```elixir
 defmodule Foo do
-  import ExUnitEmbedded
+  use ExUnitEmbedded
 
   defp foo, do: :ok
 
-  unit_tests do
-    test "foo/0 returns :ok" do
-      assert :ok = foo()
-    end
+  test "foo/0 returns :ok" do
+    assert :ok = foo()
   end
 end
 ```
 
-Then in your test module invoke `Foo.ex_unit_register/0`:
+Then in your test module invoke `unittest Foo`:
 
-```
+```elixir
 defmodule FooTest do
   use ExUnit.Case
+  import ExUnitEmbedded
 
-  Foo.ex_unit_register()
+  unittest Foo
 end
 ```
+
+## License
+
+Apache 2.0, see [LICENSE](LICENSE).
