@@ -59,7 +59,7 @@ defmodule ExUnitEmbedded do
       |> List.wrap()
 
     quote do
-      import unquote(Macros), only: [test: 2]
+      import unquote(Macros), only: [test: 2, test: 3]
 
       @ex_unit_embedded_enabled Mix.env() in unquote(envs)
 
